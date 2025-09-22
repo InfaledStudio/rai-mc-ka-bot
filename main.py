@@ -5,6 +5,22 @@ import json
 import os
 import asyncio
 from datetime import datetime
+from flask import Flask
+from threading import Thread
+
+# Setup for Replit
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bot is running!"
+
+def run():
+    app.run(host='0.0.0.0', port=8080)
+
+def keep_alive():
+    t = Thread(target=run)
+    t.start()
 
 # Bot setup
 intents = discord.Intents.default()
@@ -31,11 +47,11 @@ try:
         config = json.load(f)
 except FileNotFoundError:
     config = {
-        "staff_role_id": 1322182468845174816,
-        "log_channel_id": 1418133063623508082,
-        "ticket_category_id": 1419562664023035904,
-        "support_channel_id": 1347744654136971428,
-        "transcript_channel_id": 1418902601327575081,
+        "staff_role_id": None,
+        "log_channel_id": None,
+        "ticket_category_id": None,
+        "support_channel_id": None,
+        "transcript_channel_id": None,
         "ticket_counters": {}
     }
     with open('config.json', 'w') as f:
@@ -61,7 +77,7 @@ class CloseTicketView(View):
         super().__init__(timeout=None)
         self.ticket_owner_id = ticket_owner_id
     
-    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, emoji="🔒", custom_id="close_ticket")
+    @discord.ui.button(label="Close Ticket", style=discord.ButtonStyle.red, emoji="🔒")
     async def close_ticket(self, interaction, button):
         # Check if user is ticket owner or has mod permissions
         if interaction.user.id != self.ticket_owner_id and not interaction.user.guild_permissions.manage_messages:
@@ -84,7 +100,7 @@ class TicketOptionsView(View):
         self.channel = channel
         self.ticket_owner_id = ticket_owner_id
     
-    @discord.ui.button(label="Reopen", style=discord.ButtonStyle.green, emoji="🔓", custom_id="reopen_ticket")
+    @discord.ui.button(label="Reopen", style=discord.ButtonStyle.green, emoji="🔓")
     async def reopen_ticket(self, interaction, button):
         if not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message("Only staff can reopen tickets.", ephemeral=True)
@@ -103,7 +119,7 @@ class TicketOptionsView(View):
         
         await interaction.response.edit_message(content="Ticket reopened!", view=None)
     
-    @discord.ui.button(label="Delete", style=discord.ButtonStyle.red, emoji="🗑️", custom_id="delete_ticket")
+    @discord.ui.button(label="Delete", style=discord.ButtonStyle.red, emoji="🗑️")
     async def delete_ticket(self, interaction, button):
         if not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message("Only staff can delete tickets.", ephemeral=True)
@@ -113,7 +129,7 @@ class TicketOptionsView(View):
         await asyncio.sleep(5)
         await self.channel.delete()
     
-    @discord.ui.button(label="Transcript", style=discord.ButtonStyle.blurple, emoji="📝", custom_id="save_transcript")
+    @discord.ui.button(label="Transcript", style=discord.ButtonStyle.blurple, emoji="📝")
     async def save_transcript(self, interaction, button):
         if not interaction.user.guild_permissions.manage_messages:
             await interaction.response.send_message("Only staff can save transcripts.", ephemeral=True)
@@ -160,8 +176,7 @@ class TicketView(View):
             discord.SelectOption(label="Have Issue", value="issue", emoji="❓"),
             discord.SelectOption(label="Won Giveaway", value="giveaway", emoji="🎉"),
             discord.SelectOption(label="Report Player", value="report", emoji="🚨")
-        ],
-        custom_id="ticket_type_select"
+        ]
     )
     async def select_callback(self, interaction, select):
         ticket_type = select.values[0]
@@ -191,7 +206,7 @@ async def create_ticket(interaction, ticket_type):
         interaction.guild.me: discord.PermissionOverwrite(view_channel=True, send_messages=True)
     }
     
-    # Add staff role if configured
+    # Add mod role if configured
     if config["staff_role_id"]:
         staff_role = interaction.guild.get_role(config["staff_role_id"])
         if staff_role:
@@ -248,12 +263,9 @@ async def create_ticket(interaction, ticket_type):
 @bot.event
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
-    # Add persistent views
+    # Add persistent view for tickets
     bot.add_view(TicketView())
-    bot.add_view(CloseTicketView(0))
-    
-    # Set bot status
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Raimc Server"))
+    bot.add_view(CloseTicketView(0))  # 0 is a placeholder
 
 @bot.event
 async def on_message(message):
@@ -469,10 +481,5 @@ async def list_bad_words(ctx, language: str = None):
 
 # Run the bot
 if __name__ == "__main__":
-    # Get token from environment variable (for Railway)
-    token = os.environ.get('DISCORD_BOT_TOKEN')
-    if not token:
-        print("Error: DISCORD_BOT_TOKEN environment variable not set!")
-        exit(1)
-    
-    bot.run(token)
+    keep_alive()  # Start the Flask server for Replit
+    bot.run(os.environ['DISCORD_BOT_TOKEN'])  # Get token from environment variable
