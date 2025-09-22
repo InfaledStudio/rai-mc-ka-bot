@@ -470,7 +470,7 @@ async def list_bad_words(ctx, language: str = None):
 # Run the bot
 if __name__ == "__main__":
     # Get token from environment variable (for Railway)
-    token = os.environ.get('MTQxOTE4NDc0NDYxNjQzMTcxNw.GAUzEd.kqL3An09-6R-EK81uWiXKVlr_MibgVQcG5jaZ4')
+    token = os.environ.get('DISCORD_BOT_TOKEN')
     if not token:
         print("Error: DISCORD_BOT_TOKEN environment variable not set!")
         exit(1)
